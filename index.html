@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Youtuj — Profile Gallery</title>
+<style>
+  :root{
+    --bg:#0a0908;
+    --bg-elev:#141210;
+    --gold:#c9a24b;
+    --gold-soft:#e8d5a3;
+    --teal:#2f6f6a;
+    --teal-soft:#7fc4bd;
+    --text:#ece7dd;
+    --text-dim:#948d7f;
+    --border:rgba(201,162,75,0.18);
+    --radius:50%;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 800px at 15% -10%, rgba(47,111,106,0.14), transparent 60%),
+      radial-gradient(900px 700px at 105% 10%, rgba(201,162,75,0.10), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Cormorant Garamond', Georgia, serif;
+    min-height:100vh;
+  }
+  @font-face{
+    font-family:'Cormorant Garamond';
+    src:local('Cormorant Garamond');
+  }
+
+  header.hero{
+    padding:64px 24px 40px;
+    text-align:center;
+    border-bottom:1px solid var(--border);
+  }
+  header.hero .eyebrow{
+    font-family:'Cinzel', Georgia, serif;
+    font-size:12px;
+    letter-spacing:0.28em;
+    color:var(--teal-soft);
+    margin-bottom:14px;
+  }
+  header.hero h1{
+    font-family:'Cinzel', Georgia, serif;
+    font-weight:600;
+    font-size:clamp(28px,5vw,46px);
+    margin:0 0 10px;
+    color:var(--gold-soft);
+    letter-spacing:0.02em;
+  }
+  header.hero p{
+    color:var(--text-dim);
+    font-size:16px;
+    max-width:480px;
+    margin:0 auto;
+  }
+
+  main{
+    max-width:1240px;
+    margin:0 auto;
+    padding:40px 20px 20px;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(150px,1fr));
+    gap:26px 20px;
+  }
+  @media(min-width:700px){
+    .grid{grid-template-columns:repeat(auto-fill, minmax(170px,1fr));}
+  }
+
+  .card{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    cursor:pointer;
+    outline-offset:4px;
+  }
+  .card:focus-visible{outline:2px solid var(--gold);}
+
+  .thumb{
+    width:100%;
+    aspect-ratio:1/1;
+    border-radius:var(--radius);
+    overflow:hidden;
+    background:linear-gradient(160deg,#1b1815,#0e0c0a);
+    border:1px solid var(--border);
+    position:relative;
+    transition:border-color .25s ease, transform .25s ease;
+  }
+  .card:hover .thumb, .card:focus-visible .thumb{
+    border-color:var(--gold);
+    transform:translateY(-3px);
+  }
+  .thumb img, .thumb video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+    opacity:0;
+    transition:opacity .45s ease;
+  }
+  .thumb img.loaded, .thumb video.loaded{opacity:1;}
+
+  .thumb .placeholder{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--text-dim);
+    font-size:11px;
+    letter-spacing:.1em;
+  }
+  .thumb .placeholder::after{
+    content:'';
+    width:22px;height:22px;
+    border-radius:50%;
+    border:2px solid rgba(201,162,75,0.25);
+    border-top-color:var(--gold);
+    animation:spin 0.9s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .video-badge{
+    position:absolute;
+    bottom:8px;right:8px;
+    width:26px;height:26px;
+    border-radius:50%;
+    background:rgba(10,9,8,0.72);
+    border:1px solid var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    pointer-events:none;
+    z-index:2;
+  }
+  .video-badge svg{width:11px;height:11px;fill:var(--gold-soft);}
+
+  /* Pagination */
+  .pagination{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:8px;
+    padding:48px 12px 64px;
+  }
+  .pagination button{
+    min-width:40px;
+    height:40px;
+    padding:0 12px;
+    border-radius:10px;
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    font-family:'Cinzel', Georgia, serif;
+    font-size:13px;
+    cursor:pointer;
+    transition:all .2s ease;
+  }
+  .pagination button:hover{border-color:var(--gold);color:var(--gold-soft);}
+  .pagination button.active{
+    background:linear-gradient(160deg, rgba(201,162,75,0.22), rgba(47,111,106,0.14));
+    border-color:var(--gold);
+    color:var(--gold-soft);
+  }
+  .pagination button:disabled{opacity:0.35;cursor:default;}
+
+  .status-bar{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:13px;
+    letter-spacing:.05em;
+    margin-top:-8px;
+    padding-bottom:8px;
+  }
+
+  /* Lightbox */
+  .lightbox{
+    position:fixed;inset:0;
+    background:rgba(4,4,3,0.96);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+    padding:24px;
+  }
+  .lightbox.open{display:flex;}
+  .lightbox-content{
+    max-width:min(92vw, 900px);
+    max-height:88vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .lightbox-content img, .lightbox-content video{
+    max-width:100%;
+    max-height:88vh;
+    border-radius:6px;
+    box-shadow:0 30px 90px rgba(0,0,0,0.6);
+  }
+  .lb-btn{
+    position:absolute;
+    background:rgba(20,18,16,0.7);
+    border:1px solid var(--border);
+    color:var(--gold-soft);
+    width:46px;height:46px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    font-size:20px;
+    line-height:1;
+    transition:border-color .2s ease;
+  }
+  .lb-btn:hover{border-color:var(--gold);}
+  .lb-close{top:20px;right:20px;}
+  .lb-prev{left:20px;top:50%;transform:translateY(-50%);}
+  .lb-next{right:20px;top:50%;transform:translateY(-50%);}
+  @media(max-width:640px){
+    .lb-prev{left:8px;}
+    .lb-next{right:8px;}
+    .lb-close{top:12px;right:12px;}
+  }
+
+  .empty-note{
+    text-align:center;
+    color:var(--text-dim);
+    padding:60px 20px;
+    font-size:15px;
+  }
+
+  ::selection{background:rgba(201,162,75,0.3);}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="eyebrow">INFINITEPROFILE</div>
+  <h1>Youtuj</h1>
+  <p>A quiet archive of faces.</p>
+</header>
+
+<main>
+  <div id="grid" class="grid" role="list" aria-label="Profile gallery"></div>
+  <div id="statusBar" class="status-bar"></div>
+  <nav id="pagination" class="pagination" aria-label="Gallery pages"></nav>
+</main>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+  <button class="lb-btn lb-close" id="lbClose" aria-label="Close">✕</button>
+  <button class="lb-btn lb-prev" id="lbPrev" aria-label="Previous">‹</button>
+  <div class="lightbox-content" id="lbContent"></div>
+  <button class="lb-btn lb-next" id="lbNext" aria-label="Next">›</button>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ======================================================
+     CONFIG — edit these to point the gallery elsewhere
+     ====================================================== */
+  const BASE_URL = "https://raw.githubusercontent.com/InfiniteProfile/Youtuj/main/";
+  const PAGE_SIZE = 200; // profiles per page (100–200 recommended)
+
+  /* ======================================================
+     NAME MAP — optional. Map a filename to a display name
+     here later if you want captions; currently none of the
+     provided files had an associated name, so the gallery
+     renders header-free, unlabeled profile cards.
+     Example: "somefile.jpg": "Some Name"
+     ====================================================== */
+  const NAME_MAP = {};
+
+  /* ======================================================
+     DATA — { f: filename, v: true if video }
+     ====================================================== */
+  const ITEMS = [{"f": "0ce4e794b21de9da454681e4bb40307e.jpg", "v": false}, {"f": "0f15b3bdc2c8fac3b6869455b241d03f.jpg", "v": false}, {"f": "1001033903_frame_1.jpg", "v": false}, {"f": "1001033903_frame_10.jpg", "v": false}, {"f": "1001033903_frame_11.jpg", "v": false}, {"f": "1001033903_frame_12.jpg", "v": false}, {"f": "1001033903_frame_13.jpg", "v": false}, {"f": "1001033903_frame_14.jpg", "v": false}, {"f": "1001033903_frame_15.jpg", "v": false}, {"f": "1001033903_frame_16.jpg", "v": false}, {"f": "1001033903_frame_17.jpg", "v": false}, {"f": "1001033903_frame_18.jpg", "v": false}, {"f": "1001033903_frame_19.jpg", "v": false}, {"f": "1001033903_frame_2.jpg", "v": false}, {"f": "1001033903_frame_20.jpg", "v": false}, {"f": "1001033903_frame_21.jpg", "v": false}, {"f": "1001033903_frame_22.jpg", "v": false}, {"f": "1001033903_frame_23.jpg", "v": false}, {"f": "1001033903_frame_24.jpg", "v": false}, {"f": "1001033903_frame_25.jpg", "v": false}, {"f": "1001033903_frame_26.jpg", "v": false}, {"f": "1001033903_frame_27.jpg", "v": false}, {"f": "1001033903_frame_28.jpg", "v": false}, {"f": "1001033903_frame_29.jpg", "v": false}, {"f": "1001033903_frame_3.jpg", "v": false}, {"f": "1001033903_frame_30.jpg", "v": false}, {"f": "1001033903_frame_4.jpg", "v": false}, {"f": "1001033903_frame_5.jpg", "v": false}, {"f": "1001033903_frame_6.jpg", "v": false}, {"f": "1001033903_frame_7.jpg", "v": false}, {"f": "1001033903_frame_8.jpg", "v": false}, {"f": "1001033903_frame_9.jpg", "v": false}, {"f": "1001035520_frame_1.jpg", "v": false}, {"f": "1001035520_frame_10.jpg", "v": false}, {"f": "1001035520_frame_11.jpg", "v": false}, {"f": "1001035520_frame_12.jpg", "v": false}, {"f": "1001035520_frame_13.jpg", "v": false}, {"f": "1001035520_frame_14.jpg", "v": false}, {"f": "1001035520_frame_15.jpg", "v": false}, {"f": "1001035520_frame_16.jpg", "v": false}, {"f": "1001035520_frame_17.jpg", "v": false}, {"f": "1001035520_frame_18.jpg", "v": false}, {"f": "1001035520_frame_19.jpg", "v": false}, {"f": "1001035520_frame_2.jpg", "v": false}, {"f": "1001035520_frame_20.jpg", "v": false}, {"f": "1001035520_frame_21.jpg", "v": false}, {"f": "1001035520_frame_22.jpg", "v": false}, {"f": "1001035520_frame_23.jpg", "v": false}, {"f": "1001035520_frame_24.jpg", "v": false}, {"f": "1001035520_frame_25.jpg", "v": false}, {"f": "1001035520_frame_26.jpg", "v": false}, {"f": "1001035520_frame_27.jpg", "v": false}, {"f": "1001035520_frame_28.jpg", "v": false}, {"f": "1001035520_frame_29.jpg", "v": false}, {"f": "1001035520_frame_3.jpg", "v": false}, {"f": "1001035520_frame_30.jpg", "v": false}, {"f": "1001035520_frame_31.jpg", "v": false}, {"f": "1001035520_frame_32.jpg", "v": false}, {"f": "1001035520_frame_33.jpg", "v": false}, {"f": "1001035520_frame_34.jpg", "v": false}, {"f": "1001035520_frame_35.jpg", "v": false}, {"f": "1001035520_frame_36.jpg", "v": false}, {"f": "1001035520_frame_37.jpg", "v": false}, {"f": "1001035520_frame_38.jpg", "v": false}, {"f": "1001035520_frame_39.jpg", "v": false}, {"f": "1001035520_frame_4.jpg", "v": false}, {"f": "1001035520_frame_40.jpg", "v": false}, {"f": "1001035520_frame_41.jpg", "v": false}, {"f": "1001035520_frame_42.jpg", "v": false}, {"f": "1001035520_frame_43.jpg", "v": false}, {"f": "1001035520_frame_44.jpg", "v": false}, {"f": "1001035520_frame_45.jpg", "v": false}, {"f": "1001035520_frame_46.jpg", "v": false}, {"f": "1001035520_frame_47.jpg", "v": false}, {"f": "1001035520_frame_48.jpg", "v": false}, {"f": "1001035520_frame_49.jpg", "v": false}, {"f": "1001035520_frame_5.jpg", "v": false}, {"f": "1001035520_frame_50.jpg", "v": false}, {"f": "1001035520_frame_51.jpg", "v": false}, {"f": "1001035520_frame_52.jpg", "v": false}, {"f": "1001035520_frame_53.jpg", "v": false}, {"f": "1001035520_frame_54.jpg", "v": false}, {"f": "1001035520_frame_55.jpg", "v": false}, {"f": "1001035520_frame_56.jpg", "v": false}, {"f": "1001035520_frame_57.jpg", "v": false}, {"f": "1001035520_frame_58.jpg", "v": false}, {"f": "1001035520_frame_59.jpg", "v": false}, {"f": "1001035520_frame_6.jpg", "v": false}, {"f": "1001035520_frame_60.jpg", "v": false}, {"f": "1001035520_frame_7.jpg", "v": false}, {"f": "1001035520_frame_8.jpg", "v": false}, {"f": "1001035520_frame_9.jpg", "v": false}, {"f": "1001041654_frame_1.jpg", "v": false}, {"f": "1001041654_frame_10.jpg", "v": false}, {"f": "1001041654_frame_100.jpg", "v": false}, {"f": "1001041654_frame_101.jpg", "v": false}, {"f": "1001041654_frame_102.jpg", "v": false}, {"f": "1001041654_frame_103.jpg", "v": false}, {"f": "1001041654_frame_104.jpg", "v": false}, {"f": "1001041654_frame_105.jpg", "v": false}, {"f": "1001041654_frame_106.jpg", "v": false}, {"f": "1001041654_frame_107.jpg", "v": false}, {"f": "1001041654_frame_108.jpg", "v": false}, {"f": "1001041654_frame_109.jpg", "v": false}, {"f": "1001041654_frame_11.jpg", "v": false}, {"f": "1001041654_frame_110.jpg", "v": false}, {"f": "1001041654_frame_12.jpg", "v": false}, {"f": "1001041654_frame_13.jpg", "v": false}, {"f": "1001041654_frame_14.jpg", "v": false}, {"f": "1001041654_frame_15.jpg", "v": false}, {"f": "1001041654_frame_16.jpg", "v": false}, {"f": "1001041654_frame_17.jpg", "v": false}, {"f": "1001041654_frame_18.jpg", "v": false}, {"f": "1001041654_frame_19.jpg", "v": false}, {"f": "1001041654_frame_2.jpg", "v": false}, {"f": "1001041654_frame_20.jpg", "v": false}, {"f": "1001041654_frame_21.jpg", "v": false}, {"f": "1001041654_frame_22.jpg", "v": false}, {"f": "1001041654_frame_23.jpg", "v": false}, {"f": "1001041654_frame_24.jpg", "v": false}, {"f": "1001041654_frame_25.jpg", "v": false}, {"f": "1001041654_frame_26.jpg", "v": false}, {"f": "1001041654_frame_27.jpg", "v": false}, {"f": "1001041654_frame_28.jpg", "v": false}, {"f": "1001041654_frame_29.jpg", "v": false}, {"f": "1001041654_frame_3.jpg", "v": false}, {"f": "1001041654_frame_30.jpg", "v": false}, {"f": "1001041654_frame_31.jpg", "v": false}, {"f": "1001041654_frame_32.jpg", "v": false}, {"f": "1001041654_frame_33.jpg", "v": false}, {"f": "1001041654_frame_34.jpg", "v": false}, {"f": "1001041654_frame_35.jpg", "v": false}, {"f": "1001041654_frame_36.jpg", "v": false}, {"f": "1001041654_frame_37.jpg", "v": false}, {"f": "1001041654_frame_38.jpg", "v": false}, {"f": "1001041654_frame_39.jpg", "v": false}, {"f": "1001041654_frame_4.jpg", "v": false}, {"f": "1001041654_frame_40.jpg", "v": false}, {"f": "1001041654_frame_41.jpg", "v": false}, {"f": "1001041654_frame_42.jpg", "v": false}, {"f": "1001041654_frame_43.jpg", "v": false}, {"f": "1001041654_frame_44.jpg", "v": false}, {"f": "1001041654_frame_45.jpg", "v": false}, {"f": "1001041654_frame_46.jpg", "v": false}, {"f": "1001041654_frame_47.jpg", "v": false}, {"f": "1001041654_frame_48.jpg", "v": false}, {"f": "1001041654_frame_49.jpg", "v": false}, {"f": "1001041654_frame_5.jpg", "v": false}, {"f": "1001041654_frame_50.jpg", "v": false}, {"f": "1001041654_frame_51.jpg", "v": false}, {"f": "1001041654_frame_52.jpg", "v": false}, {"f": "1001041654_frame_53.jpg", "v": false}, {"f": "1001041654_frame_54.jpg", "v": false}, {"f": "1001041654_frame_55.jpg", "v": false}, {"f": "1001041654_frame_56.jpg", "v": false}, {"f": "1001041654_frame_57.jpg", "v": false}, {"f": "1001041654_frame_58.jpg", "v": false}, {"f": "1001041654_frame_59.jpg", "v": false}, {"f": "1001041654_frame_6.jpg", "v": false}, {"f": "1001041654_frame_60.jpg", "v": false}, {"f": "1001041654_frame_61.jpg", "v": false}, {"f": "1001041654_frame_62.jpg", "v": false}, {"f": "1001041654_frame_63.jpg", "v": false}, {"f": "1001041654_frame_64.jpg", "v": false}, {"f": "1001041654_frame_65.jpg", "v": false}, {"f": "1001041654_frame_66.jpg", "v": false}, {"f": "1001041654_frame_67.jpg", "v": false}, {"f": "1001041654_frame_68.jpg", "v": false}, {"f": "1001041654_frame_69.jpg", "v": false}, {"f": "1001041654_frame_7.jpg", "v": false}, {"f": "1001041654_frame_70.jpg", "v": false}, {"f": "1001041654_frame_71.jpg", "v": false}, {"f": "1001041654_frame_72.jpg", "v": false}, {"f": "1001041654_frame_73.jpg", "v": false}, {"f": "1001041654_frame_74.jpg", "v": false}, {"f": "1001041654_frame_75.jpg", "v": false}, {"f": "1001041654_frame_76.jpg", "v": false}, {"f": "1001041654_frame_77.jpg", "v": false}, {"f": "1001041654_frame_78.jpg", "v": false}, {"f": "1001041654_frame_79.jpg", "v": false}, {"f": "1001041654_frame_8.jpg", "v": false}, {"f": "1001041654_frame_80.jpg", "v": false}, {"f": "1001041654_frame_81.jpg", "v": false}, {"f": "1001041654_frame_82.jpg", "v": false}, {"f": "1001041654_frame_83.jpg", "v": false}, {"f": "1001041654_frame_84.jpg", "v": false}, {"f": "1001041654_frame_85.jpg", "v": false}, {"f": "1001041654_frame_86.jpg", "v": false}, {"f": "1001041654_frame_87.jpg", "v": false}, {"f": "1001041654_frame_88.jpg", "v": false}, {"f": "1001041654_frame_89.jpg", "v": false}, {"f": "1001041654_frame_9.jpg", "v": false}, {"f": "1001041654_frame_90.jpg", "v": false}, {"f": "1001041654_frame_91.jpg", "v": false}, {"f": "1001041654_frame_92.jpg", "v": false}, {"f": "1001041654_frame_93.jpg", "v": false}, {"f": "1001041654_frame_94.jpg", "v": false}, {"f": "1001041654_frame_95.jpg", "v": false}, {"f": "1001041654_frame_96.jpg", "v": false}, {"f": "1001041654_frame_97.jpg", "v": false}, {"f": "1001041654_frame_98.jpg", "v": false}, {"f": "1001041654_frame_99.jpg", "v": false}, {"f": "1001041655_frame_1.jpg", "v": false}, {"f": "1001041655_frame_10.jpg", "v": false}, {"f": "1001041655_frame_100.jpg", "v": false}, {"f": "1001041655_frame_101.jpg", "v": false}, {"f": "1001041655_frame_102.jpg", "v": false}, {"f": "1001041655_frame_103.jpg", "v": false}, {"f": "1001041655_frame_104.jpg", "v": false}, {"f": "1001041655_frame_105.jpg", "v": false}, {"f": "1001041655_frame_106.jpg", "v": false}, {"f": "1001041655_frame_107.jpg", "v": false}, {"f": "1001041655_frame_108.jpg", "v": false}, {"f": "1001041655_frame_109.jpg", "v": false}, {"f": "1001041655_frame_11.jpg", "v": false}, {"f": "1001041655_frame_110.jpg", "v": false}, {"f": "1001041655_frame_111.jpg", "v": false}, {"f": "1001041655_frame_112.jpg", "v": false}, {"f": "1001041655_frame_113.jpg", "v": false}, {"f": "1001041655_frame_114.jpg", "v": false}, {"f": "1001041655_frame_115.jpg", "v": false}, {"f": "1001041655_frame_116.jpg", "v": false}, {"f": "1001041655_frame_117.jpg", "v": false}, {"f": "1001041655_frame_118.jpg", "v": false}, {"f": "1001041655_frame_119.jpg", "v": false}, {"f": "1001041655_frame_12.jpg", "v": false}, {"f": "1001041655_frame_120.jpg", "v": false}, {"f": "1001041655_frame_121.jpg", "v": false}, {"f": "1001041655_frame_122.jpg", "v": false}, {"f": "1001041655_frame_123.jpg", "v": false}, {"f": "1001041655_frame_124.jpg", "v": false}, {"f": "1001041655_frame_125.jpg", "v": false}, {"f": "1001041655_frame_126.jpg", "v": false}, {"f": "1001041655_frame_127.jpg", "v": false}, {"f": "1001041655_frame_128.jpg", "v": false}, {"f": "1001041655_frame_129.jpg", "v": false}, {"f": "1001041655_frame_13.jpg", "v": false}, {"f": "1001041655_frame_130.jpg", "v": false}, {"f": "1001041655_frame_131.jpg", "v": false}, {"f": "1001041655_frame_132.jpg", "v": false}, {"f": "1001041655_frame_133.jpg", "v": false}, {"f": "1001041655_frame_134.jpg", "v": false}, {"f": "1001041655_frame_135.jpg", "v": false}, {"f": "1001041655_frame_136.jpg", "v": false}, {"f": "1001041655_frame_137.jpg", "v": false}, {"f": "1001041655_frame_138.jpg", "v": false}, {"f": "1001041655_frame_139.jpg", "v": false}, {"f": "1001041655_frame_14.jpg", "v": false}, {"f": "1001041655_frame_140.jpg", "v": false}, {"f": "1001041655_frame_15.jpg", "v": false}, {"f": "1001041655_frame_16.jpg", "v": false}, {"f": "1001041655_frame_17.jpg", "v": false}, {"f": "1001041655_frame_18.jpg", "v": false}, {"f": "1001041655_frame_19.jpg", "v": false}, {"f": "1001041655_frame_2.jpg", "v": false}, {"f": "1001041655_frame_20.jpg", "v": false}, {"f": "1001041655_frame_21.jpg", "v": false}, {"f": "1001041655_frame_22.jpg", "v": false}, {"f": "1001041655_frame_23.jpg", "v": false}, {"f": "1001041655_frame_24.jpg", "v": false}, {"f": "1001041655_frame_25.jpg", "v": false}, {"f": "1001041655_frame_26.jpg", "v": false}, {"f": "1001041655_frame_27.jpg", "v": false}, {"f": "1001041655_frame_28.jpg", "v": false}, {"f": "1001041655_frame_29.jpg", "v": false}, {"f": "1001041655_frame_3.jpg", "v": false}, {"f": "1001041655_frame_30.jpg", "v": false}, {"f": "1001041655_frame_31.jpg", "v": false}, {"f": "1001041655_frame_32.jpg", "v": false}, {"f": "1001041655_frame_33.jpg", "v": false}, {"f": "1001041655_frame_34.jpg", "v": false}, {"f": "1001041655_frame_35.jpg", "v": false}, {"f": "1001041655_frame_36.jpg", "v": false}, {"f": "1001041655_frame_37.jpg", "v": false}, {"f": "1001041655_frame_38.jpg", "v": false}, {"f": "1001041655_frame_39.jpg", "v": false}, {"f": "1001041655_frame_4.jpg", "v": false}, {"f": "1001041655_frame_40.jpg", "v": false}, {"f": "1001041655_frame_42.jpg", "v": false}, {"f": "1001041655_frame_43.jpg", "v": false}, {"f": "1001041655_frame_44.jpg", "v": false}, {"f": "1001041655_frame_45.jpg", "v": false}, {"f": "1001041655_frame_46.jpg", "v": false}, {"f": "1001041655_frame_47.jpg", "v": false}, {"f": "1001041655_frame_48.jpg", "v": false}, {"f": "1001041655_frame_49.jpg", "v": false}, {"f": "1001041655_frame_5.jpg", "v": false}, {"f": "1001041655_frame_50.jpg", "v": false}, {"f": "1001041655_frame_51.jpg", "v": false}, {"f": "1001041655_frame_52.jpg", "v": false}, {"f": "1001041655_frame_53.jpg", "v": false}, {"f": "1001041655_frame_54.jpg", "v": false}, {"f": "1001041655_frame_55.jpg", "v": false}, {"f": "1001041655_frame_56.jpg", "v": false}, {"f": "1001041655_frame_57.jpg", "v": false}, {"f": "1001041655_frame_58.jpg", "v": false}, {"f": "1001041655_frame_59.jpg", "v": false}, {"f": "1001041655_frame_6.jpg", "v": false}, {"f": "1001041655_frame_60.jpg", "v": false}, {"f": "1001041655_frame_61.jpg", "v": false}, {"f": "1001041655_frame_62.jpg", "v": false}, {"f": "1001041655_frame_63.jpg", "v": false}, {"f": "1001041655_frame_64.jpg", "v": false}, {"f": "1001041655_frame_65.jpg", "v": false}, {"f": "1001041655_frame_66.jpg", "v": false}, {"f": "1001041655_frame_67.jpg", "v": false}, {"f": "1001041655_frame_68.jpg", "v": false}, {"f": "1001041655_frame_69.jpg", "v": false}, {"f": "1001041655_frame_7.jpg", "v": false}, {"f": "1001041655_frame_70.jpg", "v": false}, {"f": "1001041655_frame_71.jpg", "v": false}, {"f": "1001041655_frame_72.jpg", "v": false}, {"f": "1001041655_frame_73.jpg", "v": false}, {"f": "1001041655_frame_74.jpg", "v": false}, {"f": "1001041655_frame_75.jpg", "v": false}, {"f": "1001041655_frame_76.jpg", "v": false}, {"f": "1001041655_frame_77.jpg", "v": false}, {"f": "1001041655_frame_78.jpg", "v": false}, {"f": "1001041655_frame_79.jpg", "v": false}, {"f": "1001041655_frame_8.jpg", "v": false}, {"f": "1001041655_frame_80.jpg", "v": false}, {"f": "1001041655_frame_81.jpg", "v": false}, {"f": "1001041655_frame_82.jpg", "v": false}, {"f": "1001041655_frame_83.jpg", "v": false}, {"f": "1001041655_frame_84.jpg", "v": false}, {"f": "1001041655_frame_85.jpg", "v": false}, {"f": "1001041655_frame_86.jpg", "v": false}, {"f": "1001041655_frame_87.jpg", "v": false}, {"f": "1001041655_frame_88.jpg", "v": false}, {"f": "1001041655_frame_89.jpg", "v": false}, {"f": "1001041655_frame_9.jpg", "v": false}, {"f": "1001041655_frame_90.jpg", "v": false}, {"f": "1001041655_frame_91.jpg", "v": false}, {"f": "1001041655_frame_92.jpg", "v": false}, {"f": "1001041655_frame_93.jpg", "v": false}, {"f": "1001041655_frame_94.jpg", "v": false}, {"f": "1001041655_frame_95.jpg", "v": false}, {"f": "1001041655_frame_96.jpg", "v": false}, {"f": "1001041655_frame_97.jpg", "v": false}, {"f": "1001041655_frame_98.jpg", "v": false}, {"f": "1001041655_frame_99.jpg", "v": false}, {"f": "1001041656_frame_1 (1).jpg", "v": false}, {"f": "1001041656_frame_1.jpg", "v": false}, {"f": "1001041656_frame_10 (1).jpg", "v": false}, {"f": "1001041656_frame_10.jpg", "v": false}, {"f": "1001041656_frame_100 (1).jpg", "v": false}, {"f": "1001041656_frame_100.jpg", "v": false}, {"f": "1001041656_frame_11 (1).jpg", "v": false}, {"f": "1001041656_frame_11.jpg", "v": false}, {"f": "1001041656_frame_12 (1).jpg", "v": false}, {"f": "1001041656_frame_12.jpg", "v": false}, {"f": "1001041656_frame_13 (1).jpg", "v": false}, {"f": "1001041656_frame_13.jpg", "v": false}, {"f": "1001041656_frame_14 (1).jpg", "v": false}, {"f": "1001041656_frame_14.jpg", "v": false}, {"f": "1001041656_frame_15 (1).jpg", "v": false}, {"f": "1001041656_frame_15.jpg", "v": false}, {"f": "1001041656_frame_16 (1).jpg", "v": false}, {"f": "1001041656_frame_16.jpg", "v": false}, {"f": "1001041656_frame_17 (1).jpg", "v": false}, {"f": "1001041656_frame_17.jpg", "v": false}, {"f": "1001041656_frame_18 (1).jpg", "v": false}, {"f": "1001041656_frame_18.jpg", "v": false}, {"f": "1001041656_frame_19 (1).jpg", "v": false}, {"f": "1001041656_frame_19.jpg", "v": false}, {"f": "1001041656_frame_2 (1).jpg", "v": false}, {"f": "1001041656_frame_2.jpg", "v": false}, {"f": "1001041656_frame_20 (1).jpg", "v": false}, {"f": "1001041656_frame_20.jpg", "v": false}, {"f": "1001041656_frame_21 (1).jpg", "v": false}, {"f": "1001041656_frame_21.jpg", "v": false}, {"f": "1001041656_frame_22 (1).jpg", "v": false}, {"f": "1001041656_frame_22.jpg", "v": false}, {"f": "1001041656_frame_23 (1).jpg", "v": false}, {"f": "1001041656_frame_23.jpg", "v": false}, {"f": "1001041656_frame_24 (1).jpg", "v": false}, {"f": "1001041656_frame_24.jpg", "v": false}, {"f": "1001041656_frame_25 (1).jpg", "v": false}, {"f": "1001041656_frame_25.jpg", "v": false}, {"f": "1001041656_frame_26 (1).jpg", "v": false}, {"f": "1001041656_frame_26.jpg", "v": false}, {"f": "1001041656_frame_27 (1).jpg", "v": false}, {"f": "1001041656_frame_27.jpg", "v": false}, {"f": "1001041656_frame_28 (1).jpg", "v": false}, {"f": "1001041656_frame_28.jpg", "v": false}, {"f": "1001041656_frame_29 (1).jpg", "v": false}, {"f": "1001041656_frame_29.jpg", "v": false}, {"f": "1001041656_frame_3 (1).jpg", "v": false}, {"f": "1001041656_frame_3.jpg", "v": false}, {"f": "1001041656_frame_30 (1).jpg", "v": false}, {"f": "1001041656_frame_30.jpg", "v": false}, {"f": "1001041656_frame_31 (1).jpg", "v": false}, {"f": "1001041656_frame_31.jpg", "v": false}, {"f": "1001041656_frame_32 (1).jpg", "v": false}, {"f": "1001041656_frame_32.jpg", "v": false}, {"f": "1001041656_frame_33 (1).jpg", "v": false}, {"f": "1001041656_frame_33.jpg", "v": false}, {"f": "1001041656_frame_34 (1).jpg", "v": false}, {"f": "1001041656_frame_34.jpg", "v": false}, {"f": "1001041656_frame_35 (1).jpg", "v": false}, {"f": "1001041656_frame_35.jpg", "v": false}, {"f": "1001041656_frame_36 (1).jpg", "v": false}, {"f": "1001041656_frame_36.jpg", "v": false}, {"f": "1001041656_frame_37 (1).jpg", "v": false}, {"f": "1001041656_frame_37.jpg", "v": false}, {"f": "1001041656_frame_38 (1).jpg", "v": false}, {"f": "1001041656_frame_38.jpg", "v": false}, {"f": "1001041656_frame_39 (1).jpg", "v": false}, {"f": "1001041656_frame_39.jpg", "v": false}, {"f": "1001041656_frame_4 (1).jpg", "v": false}, {"f": "1001041656_frame_4.jpg", "v": false}, {"f": "1001041656_frame_40 (1).jpg", "v": false}, {"f": "1001041656_frame_40.jpg", "v": false}, {"f": "1001041656_frame_42 (1).jpg", "v": false}, {"f": "1001041656_frame_42.jpg", "v": false}, {"f": "1001041656_frame_43 (1).jpg", "v": false}, {"f": "1001041656_frame_43.jpg", "v": false}, {"f": "1001041656_frame_44 (1).jpg", "v": false}, {"f": "1001041656_frame_44.jpg", "v": false}, {"f": "1001041656_frame_45 (1).jpg", "v": false}, {"f": "1001041656_frame_45.jpg", "v": false}, {"f": "1001041656_frame_46 (1).jpg", "v": false}, {"f": "1001041656_frame_46.jpg", "v": false}, {"f": "1001041656_frame_47 (1).jpg", "v": false}, {"f": "1001041656_frame_47.jpg", "v": false}, {"f": "1001041656_frame_48 (1).jpg", "v": false}, {"f": "1001041656_frame_48.jpg", "v": false}, {"f": "1001041656_frame_49 (1).jpg", "v": false}, {"f": "1001041656_frame_49.jpg", "v": false}, {"f": "1001041656_frame_5 (1).jpg", "v": false}, {"f": "1001041656_frame_5.jpg", "v": false}, {"f": "1001041656_frame_50 (1).jpg", "v": false}, {"f": "1001041656_frame_50.jpg", "v": false}, {"f": "1001041656_frame_51 (1).jpg", "v": false}, {"f": "1001041656_frame_51.jpg", "v": false}, {"f": "1001041656_frame_52 (1).jpg", "v": false}, {"f": "1001041656_frame_52.jpg", "v": false}, {"f": "1001041656_frame_53 (1).jpg", "v": false}, {"f": "1001041656_frame_53.jpg", "v": false}, {"f": "1001041656_frame_54 (1).jpg", "v": false}, {"f": "1001041656_frame_54.jpg", "v": false}, {"f": "1001041656_frame_55 (1).jpg", "v": false}, {"f": "1001041656_frame_55.jpg", "v": false}, {"f": "1001041656_frame_56 (1).jpg", "v": false}, {"f": "1001041656_frame_56.jpg", "v": false}, {"f": "1001041656_frame_57 (1).jpg", "v": false}, {"f": "1001041656_frame_57.jpg", "v": false}, {"f": "1001041656_frame_58 (1).jpg", "v": false}, {"f": "1001041656_frame_58.jpg", "v": false}, {"f": "1001041656_frame_59 (1).jpg", "v": false}, {"f": "1001041656_frame_59.jpg", "v": false}, {"f": "1001041656_frame_6 (1).jpg", "v": false}, {"f": "1001041656_frame_6.jpg", "v": false}, {"f": "1001041656_frame_60 (1).jpg", "v": false}, {"f": "1001041656_frame_60.jpg", "v": false}, {"f": "1001041656_frame_61 (1).jpg", "v": false}, {"f": "1001041656_frame_61.jpg", "v": false}, {"f": "1001041656_frame_62 (1).jpg", "v": false}, {"f": "1001041656_frame_62.jpg", "v": false}, {"f": "1001041656_frame_63 (1).jpg", "v": false}, {"f": "1001041656_frame_63.jpg", "v": false}, {"f": "1001041656_frame_64 (1).jpg", "v": false}, {"f": "1001041656_frame_64.jpg", "v": false}, {"f": "1001041656_frame_65 (1).jpg", "v": false}, {"f": "1001041656_frame_65.jpg", "v": false}, {"f": "1001041656_frame_66 (1).jpg", "v": false}, {"f": "1001041656_frame_66.jpg", "v": false}, {"f": "1001041656_frame_67 (1).jpg", "v": false}, {"f": "1001041656_frame_67.jpg", "v": false}, {"f": "1001041656_frame_68 (1).jpg", "v": false}, {"f": "1001041656_frame_68.jpg", "v": false}, {"f": "1001041656_frame_69 (1).jpg", "v": false}, {"f": "1001041656_frame_69.jpg", "v": false}, {"f": "1001041656_frame_7 (1).jpg", "v": false}, {"f": "1001041656_frame_7.jpg", "v": false}, {"f": "1001041656_frame_70 (1).jpg", "v": false}, {"f": "1001041656_frame_70.jpg", "v": false}, {"f": "1001041656_frame_71 (1).jpg", "v": false}, {"f": "1001041656_frame_71.jpg", "v": false}, {"f": "1001041656_frame_72 (1).jpg", "v": false}, {"f": "1001041656_frame_72.jpg", "v": false}, {"f": "1001041656_frame_73 (1).jpg", "v": false}, {"f": "1001041656_frame_73.jpg", "v": false}, {"f": "1001041656_frame_74 (1).jpg", "v": false}, {"f": "1001041656_frame_74.jpg", "v": false}, {"f": "1001041656_frame_75 (1).jpg", "v": false}, {"f": "1001041656_frame_75.jpg", "v": false}, {"f": "1001041656_frame_76 (1).jpg", "v": false}, {"f": "1001041656_frame_76.jpg", "v": false}, {"f": "1001041656_frame_77 (1).jpg", "v": false}, {"f": "1001041656_frame_77.jpg", "v": false}, {"f": "1001041656_frame_78 (1).jpg", "v": false}, {"f": "1001041656_frame_78.jpg", "v": false}, {"f": "1001041656_frame_79 (1).jpg", "v": false}, {"f": "1001041656_frame_79.jpg", "v": false}, {"f": "1001041656_frame_8 (1).jpg", "v": false}, {"f": "1001041656_frame_8.jpg", "v": false}, {"f": "1001041656_frame_80 (1).jpg", "v": false}, {"f": "1001041656_frame_80.jpg", "v": false}, {"f": "1001041656_frame_81 (1).jpg", "v": false}, {"f": "1001041656_frame_81.jpg", "v": false}, {"f": "1001041656_frame_82 (1).jpg", "v": false}, {"f": "1001041656_frame_82.jpg", "v": false}, {"f": "1001041656_frame_83 (1).jpg", "v": false}, {"f": "1001041656_frame_83.jpg", "v": false}, {"f": "1001041656_frame_84 (1).jpg", "v": false}, {"f": "1001041656_frame_84.jpg", "v": false}, {"f": "1001041656_frame_85 (1).jpg", "v": false}, {"f": "1001041656_frame_85.jpg", "v": false}, {"f": "1001041656_frame_86 (1).jpg", "v": false}, {"f": "1001041656_frame_86.jpg", "v": false}, {"f": "1001041656_frame_87 (1).jpg", "v": false}, {"f": "1001041656_frame_87.jpg", "v": false}, {"f": "1001041656_frame_88 (1).jpg", "v": false}, {"f": "1001041656_frame_88.jpg", "v": false}, {"f": "1001041656_frame_89 (1).jpg", "v": false}, {"f": "1001041656_frame_89.jpg", "v": false}, {"f": "1001041656_frame_9 (1).jpg", "v": false}, {"f": "1001041656_frame_9.jpg", "v": false}, {"f": "1001041656_frame_90 (1).jpg", "v": false}, {"f": "1001041656_frame_90.jpg", "v": false}, {"f": "1001041656_frame_91 (1).jpg", "v": false}, {"f": "1001041656_frame_91.jpg", "v": false}, {"f": "1001041656_frame_92 (1).jpg", "v": false}, {"f": "1001041656_frame_92.jpg", "v": false}, {"f": "1001041656_frame_93 (1).jpg", "v": false}, {"f": "1001041656_frame_93.jpg", "v": false}, {"f": "1001041656_frame_94 (1).jpg", "v": false}, {"f": "1001041656_frame_94.jpg", "v": false}, {"f": "1001041656_frame_95 (1).jpg", "v": false}, {"f": "1001041656_frame_95.jpg", "v": false}, {"f": "1001041656_frame_96 (1).jpg", "v": false}, {"f": "1001041656_frame_96.jpg", "v": false}, {"f": "1001041656_frame_97 (1).jpg", "v": false}, {"f": "1001041656_frame_97.jpg", "v": false}, {"f": "1001041656_frame_98 (1).jpg", "v": false}, {"f": "1001041656_frame_98.jpg", "v": false}, {"f": "1001041656_frame_99 (1).jpg", "v": false}, {"f": "1001041656_frame_99.jpg", "v": false}, {"f": "1001041657_frame_1.jpg", "v": false}, {"f": "1001041657_frame_10.jpg", "v": false}, {"f": "1001041657_frame_100.jpg", "v": false}, {"f": "1001041657_frame_101.jpg", "v": false}, {"f": "1001041657_frame_102.jpg", "v": false}, {"f": "1001041657_frame_103.jpg", "v": false}, {"f": "1001041657_frame_104.jpg", "v": false}, {"f": "1001041657_frame_105.jpg", "v": false}, {"f": "1001041657_frame_106.jpg", "v": false}, {"f": "1001041657_frame_107.jpg", "v": false}, {"f": "1001041657_frame_108.jpg", "v": false}, {"f": "1001041657_frame_109.jpg", "v": false}, {"f": "1001041657_frame_11.jpg", "v": false}, {"f": "1001041657_frame_110.jpg", "v": false}, {"f": "1001041657_frame_111.jpg", "v": false}, {"f": "1001041657_frame_112.jpg", "v": false}, {"f": "1001041657_frame_113.jpg", "v": false}, {"f": "1001041657_frame_114.jpg", "v": false}, {"f": "1001041657_frame_115.jpg", "v": false}, {"f": "1001041657_frame_116.jpg", "v": false}, {"f": "1001041657_frame_117.jpg", "v": false}, {"f": "1001041657_frame_118.jpg", "v": false}, {"f": "1001041657_frame_119.jpg", "v": false}, {"f": "1001041657_frame_12.jpg", "v": false}, {"f": "1001041657_frame_120.jpg", "v": false}, {"f": "1001041657_frame_121.jpg", "v": false}, {"f": "1001041657_frame_122.jpg", "v": false}, {"f": "1001041657_frame_123.jpg", "v": false}, {"f": "1001041657_frame_124.jpg", "v": false}, {"f": "1001041657_frame_125.jpg", "v": false}, {"f": "1001041657_frame_126.jpg", "v": false}, {"f": "1001041657_frame_127.jpg", "v": false}, {"f": "1001041657_frame_128.jpg", "v": false}, {"f": "1001041657_frame_129.jpg", "v": false}, {"f": "1001041657_frame_13.jpg", "v": false}, {"f": "1001041657_frame_130.jpg", "v": false}, {"f": "1001041657_frame_14.jpg", "v": false}, {"f": "1001041657_frame_15.jpg", "v": false}, {"f": "1001041657_frame_16.jpg", "v": false}, {"f": "1001041657_frame_17.jpg", "v": false}, {"f": "1001041657_frame_18.jpg", "v": false}, {"f": "1001041657_frame_19.jpg", "v": false}, {"f": "1001041657_frame_2.jpg", "v": false}, {"f": "1001041657_frame_20.jpg", "v": false}, {"f": "1001041657_frame_21.jpg", "v": false}, {"f": "1001041657_frame_22.jpg", "v": false}, {"f": "1001041657_frame_23.jpg", "v": false}, {"f": "1001041657_frame_24.jpg", "v": false}, {"f": "1001041657_frame_25.jpg", "v": false}, {"f": "1001041657_frame_26.jpg", "v": false}, {"f": "1001041657_frame_27.jpg", "v": false}, {"f": "1001041657_frame_28.jpg", "v": false}, {"f": "1001041657_frame_29.jpg", "v": false}, {"f": "1001041657_frame_3.jpg", "v": false}, {"f": "1001041657_frame_30.jpg", "v": false}, {"f": "1001041657_frame_31.jpg", "v": false}, {"f": "1001041657_frame_32.jpg", "v": false}, {"f": "1001041657_frame_33.jpg", "v": false}, {"f": "1001041657_frame_34.jpg", "v": false}, {"f": "1001041657_frame_35.jpg", "v": false}, {"f": "1001041657_frame_36.jpg", "v": false}, {"f": "1001041657_frame_37.jpg", "v": false}, {"f": "1001041657_frame_38.jpg", "v": false}, {"f": "1001041657_frame_39.jpg", "v": false}, {"f": "1001041657_frame_4.jpg", "v": false}, {"f": "1001041657_frame_40.jpg", "v": false}, {"f": "1001041657_frame_42.jpg", "v": false}, {"f": "1001041657_frame_43.jpg", "v": false}, {"f": "1001041657_frame_44.jpg", "v": false}, {"f": "1001041657_frame_45.jpg", "v": false}, {"f": "1001041657_frame_46.jpg", "v": false}, {"f": "1001041657_frame_47.jpg", "v": false}, {"f": "1001041657_frame_48.jpg", "v": false}, {"f": "1001041657_frame_49.jpg", "v": false}, {"f": "1001041657_frame_5.jpg", "v": false}, {"f": "1001041657_frame_50.jpg", "v": false}, {"f": "1001041657_frame_51.jpg", "v": false}, {"f": "1001041657_frame_52.jpg", "v": false}, {"f": "1001041657_frame_53.jpg", "v": false}, {"f": "1001041657_frame_54.jpg", "v": false}, {"f": "1001041657_frame_55.jpg", "v": false}, {"f": "1001041657_frame_56.jpg", "v": false}, {"f": "1001041657_frame_57.jpg", "v": false}, {"f": "1001041657_frame_58.jpg", "v": false}, {"f": "1001041657_frame_59.jpg", "v": false}, {"f": "1001041657_frame_6.jpg", "v": false}, {"f": "1001041657_frame_60.jpg", "v": false}, {"f": "1001041657_frame_61.jpg", "v": false}, {"f": "1001041657_frame_62.jpg", "v": false}, {"f": "1001041657_frame_63.jpg", "v": false}, {"f": "1001041657_frame_64.jpg", "v": false}, {"f": "1001041657_frame_65.jpg", "v": false}, {"f": "1001041657_frame_66.jpg", "v": false}, {"f": "1001041657_frame_67.jpg", "v": false}, {"f": "1001041657_frame_68.jpg", "v": false}, {"f": "1001041657_frame_69.jpg", "v": false}, {"f": "1001041657_frame_7.jpg", "v": false}, {"f": "1001041657_frame_70.jpg", "v": false}, {"f": "1001041657_frame_71.jpg", "v": false}, {"f": "1001041657_frame_72.jpg", "v": false}, {"f": "1001041657_frame_73.jpg", "v": false}, {"f": "1001041657_frame_74.jpg", "v": false}, {"f": "1001041657_frame_75.jpg", "v": false}, {"f": "1001041657_frame_76.jpg", "v": false}, {"f": "1001041657_frame_77.jpg", "v": false}, {"f": "1001041657_frame_78.jpg", "v": false}, {"f": "1001041657_frame_79.jpg", "v": false}, {"f": "1001041657_frame_8.jpg", "v": false}, {"f": "1001041657_frame_80.jpg", "v": false}, {"f": "1001041657_frame_81.jpg", "v": false}, {"f": "1001041657_frame_82.jpg", "v": false}, {"f": "1001041657_frame_83.jpg", "v": false}, {"f": "1001041657_frame_84.jpg", "v": false}, {"f": "1001041657_frame_85.jpg", "v": false}, {"f": "1001041657_frame_86.jpg", "v": false}, {"f": "1001041657_frame_87.jpg", "v": false}, {"f": "1001041657_frame_88.jpg", "v": false}, {"f": "1001041657_frame_89.jpg", "v": false}, {"f": "1001041657_frame_9.jpg", "v": false}, {"f": "1001041657_frame_90.jpg", "v": false}, {"f": "1001041657_frame_91.jpg", "v": false}, {"f": "1001041657_frame_92.jpg", "v": false}, {"f": "1001041657_frame_93.jpg", "v": false}, {"f": "1001041657_frame_94.jpg", "v": false}, {"f": "1001041657_frame_95.jpg", "v": false}, {"f": "1001041657_frame_96.jpg", "v": false}, {"f": "1001041657_frame_97.jpg", "v": false}, {"f": "1001041657_frame_98.jpg", "v": false}, {"f": "1001041657_frame_99.jpg", "v": false}, {"f": "1001041658_frame_1.jpg", "v": false}, {"f": "1001041658_frame_10.jpg", "v": false}, {"f": "1001041658_frame_100.jpg", "v": false}, {"f": "1001041658_frame_101.jpg", "v": false}, {"f": "1001041658_frame_102.jpg", "v": false}, {"f": "1001041658_frame_103.jpg", "v": false}, {"f": "1001041658_frame_104.jpg", "v": false}, {"f": "1001041658_frame_105.jpg", "v": false}, {"f": "1001041658_frame_106.jpg", "v": false}, {"f": "1001041658_frame_107.jpg", "v": false}, {"f": "1001041658_frame_108.jpg", "v": false}, {"f": "1001041658_frame_109.jpg", "v": false}, {"f": "1001041658_frame_11.jpg", "v": false}, {"f": "1001041658_frame_110.jpg", "v": false}, {"f": "1001041658_frame_111.jpg", "v": false}, {"f": "1001041658_frame_112.jpg", "v": false}, {"f": "1001041658_frame_113.jpg", "v": false}, {"f": "1001041658_frame_114.jpg", "v": false}, {"f": "1001041658_frame_115.jpg", "v": false}, {"f": "1001041658_frame_116.jpg", "v": false}, {"f": "1001041658_frame_117.jpg", "v": false}, {"f": "1001041658_frame_118.jpg", "v": false}, {"f": "1001041658_frame_119.jpg", "v": false}, {"f": "1001041658_frame_12.jpg", "v": false}, {"f": "1001041658_frame_120.jpg", "v": false}, {"f": "1001041658_frame_121.jpg", "v": false}, {"f": "1001041658_frame_122.jpg", "v": false}, {"f": "1001041658_frame_123.jpg", "v": false}, {"f": "1001041658_frame_124.jpg", "v": false}, {"f": "1001041658_frame_125.jpg", "v": false}, {"f": "1001041658_frame_126.jpg", "v": false}, {"f": "1001041658_frame_127.jpg", "v": false}, {"f": "1001041658_frame_128.jpg", "v": false}, {"f": "1001041658_frame_129.jpg", "v": false}, {"f": "1001041658_frame_13.jpg", "v": false}, {"f": "1001041658_frame_130.jpg", "v": false}, {"f": "1001041658_frame_131.jpg", "v": false}, {"f": "1001041658_frame_132.jpg", "v": false}, {"f": "1001041658_frame_133.jpg", "v": false}, {"f": "1001041658_frame_134.jpg", "v": false}, {"f": "1001041658_frame_135.jpg", "v": false}, {"f": "1001041658_frame_136.jpg", "v": false}, {"f": "1001041658_frame_137.jpg", "v": false}, {"f": "1001041658_frame_138.jpg", "v": false}, {"f": "1001041658_frame_139.jpg", "v": false}, {"f": "1001041658_frame_14.jpg", "v": false}, {"f": "1001041658_frame_140.jpg", "v": false}, {"f": "1001041658_frame_141.jpg", "v": false}, {"f": "1001041658_frame_142.jpg", "v": false}, {"f": "1001041658_frame_143.jpg", "v": false}, {"f": "1001041658_frame_144.jpg", "v": false}, {"f": "1001041658_frame_145.jpg", "v": false}, {"f": "1001041658_frame_146.jpg", "v": false}, {"f": "1001041658_frame_147.jpg", "v": false}, {"f": "1001041658_frame_148.jpg", "v": false}, {"f": "1001041658_frame_149.jpg", "v": false}, {"f": "1001041658_frame_15.jpg", "v": false}, {"f": "1001041658_frame_150.jpg", "v": false}, {"f": "1001041658_frame_151.jpg", "v": false}, {"f": "1001041658_frame_152.jpg", "v": false}, {"f": "1001041658_frame_153.jpg", "v": false}, {"f": "1001041658_frame_154.jpg", "v": false}, {"f": "1001041658_frame_155.jpg", "v": false}, {"f": "1001041658_frame_156.jpg", "v": false}, {"f": "1001041658_frame_157.jpg", "v": false}, {"f": "1001041658_frame_158.jpg", "v": false}, {"f": "1001041658_frame_159.jpg", "v": false}, {"f": "1001041658_frame_16.jpg", "v": false}, {"f": "1001041658_frame_160.jpg", "v": false}, {"f": "1001041658_frame_161.jpg", "v": false}, {"f": "1001041658_frame_162.jpg", "v": false}, {"f": "1001041658_frame_163.jpg", "v": false}, {"f": "1001041658_frame_164.jpg", "v": false}, {"f": "1001041658_frame_165.jpg", "v": false}, {"f": "1001041658_frame_166.jpg", "v": false}, {"f": "1001041658_frame_167.jpg", "v": false}, {"f": "1001041658_frame_168.jpg", "v": false}, {"f": "1001041658_frame_169.jpg", "v": false}, {"f": "1001041658_frame_17.jpg", "v": false}, {"f": "1001041658_frame_170.jpg", "v": false}, {"f": "1001041658_frame_171.jpg", "v": false}, {"f": "1001041658_frame_172.jpg", "v": false}, {"f": "1001041658_frame_173.jpg", "v": false}, {"f": "1001041658_frame_174.jpg", "v": false}, {"f": "1001041658_frame_175.jpg", "v": false}, {"f": "1001041658_frame_176.jpg", "v": false}, {"f": "1001041658_frame_177.jpg", "v": false}, {"f": "1001041658_frame_178.jpg", "v": false}, {"f": "1001041658_frame_179.jpg", "v": false}, {"f": "1001041658_frame_18.jpg", "v": false}, {"f": "1001041658_frame_180.jpg", "v": false}, {"f": "1001041658_frame_181.jpg", "v": false}, {"f": "1001041658_frame_182.jpg", "v": false}, {"f": "1001041658_frame_183.jpg", "v": false}, {"f": "1001041658_frame_184.jpg", "v": false}, {"f": "1001041658_frame_185.jpg", "v": false}, {"f": "1001041658_frame_186.jpg", "v": false}, {"f": "1001041658_frame_187.jpg", "v": false}, {"f": "1001041658_frame_188.jpg", "v": false}, {"f": "1001041658_frame_189.jpg", "v": false}, {"f": "1001041658_frame_19.jpg", "v": false}, {"f": "1001041658_frame_190.jpg", "v": false}, {"f": "1001041658_frame_191.jpg", "v": false}, {"f": "1001041658_frame_192.jpg", "v": false}, {"f": "1001041658_frame_193.jpg", "v": false}, {"f": "1001041658_frame_194.jpg", "v": false}, {"f": "1001041658_frame_195.jpg", "v": false}, {"f": "1001041658_frame_196.jpg", "v": false}, {"f": "1001041658_frame_197.jpg", "v": false}, {"f": "1001041658_frame_198.jpg", "v": false}, {"f": "1001041658_frame_199.jpg", "v": false}, {"f": "1001041658_frame_2.jpg", "v": false}, {"f": "1001041658_frame_20.jpg", "v": false}, {"f": "1001041658_frame_200.jpg", "v": false}, {"f": "1001041658_frame_21.jpg", "v": false}, {"f": "1001041658_frame_22.jpg", "v": false}, {"f": "1001041658_frame_23.jpg", "v": false}, {"f": "1001041658_frame_24.jpg", "v": false}, {"f": "1001041658_frame_25.jpg", "v": false}, {"f": "1001041658_frame_26.jpg", "v": false}, {"f": "1001041658_frame_27.jpg", "v": false}, {"f": "1001041658_frame_28.jpg", "v": false}, {"f": "1001041658_frame_29.jpg", "v": false}, {"f": "1001041658_frame_3.jpg", "v": false}, {"f": "1001041658_frame_30.jpg", "v": false}, {"f": "1001041658_frame_31.jpg", "v": false}, {"f": "1001041658_frame_32.jpg", "v": false}, {"f": "1001041658_frame_33.jpg", "v": false}, {"f": "1001041658_frame_34.jpg", "v": false}, {"f": "1001041658_frame_35.jpg", "v": false}, {"f": "1001041658_frame_36.jpg", "v": false}, {"f": "1001041658_frame_37.jpg", "v": false}, {"f": "1001041658_frame_38.jpg", "v": false}, {"f": "1001041658_frame_39.jpg", "v": false}, {"f": "1001041658_frame_4.jpg", "v": false}, {"f": "1001041658_frame_40.jpg", "v": false}, {"f": "1001041658_frame_41.jpg", "v": false}, {"f": "1001041658_frame_42.jpg", "v": false}, {"f": "1001041658_frame_43.jpg", "v": false}, {"f": "1001041658_frame_44.jpg", "v": false}, {"f": "1001041658_frame_45.jpg", "v": false}, {"f": "1001041658_frame_46.jpg", "v": false}, {"f": "1001041658_frame_47.jpg", "v": false}, {"f": "1001041658_frame_48.jpg", "v": false}, {"f": "1001041658_frame_49.jpg", "v": false}, {"f": "1001041658_frame_5.jpg", "v": false}, {"f": "1001041658_frame_50.jpg", "v": false}, {"f": "1001041658_frame_51.jpg", "v": false}, {"f": "1001041658_frame_52.jpg", "v": false}, {"f": "1001041658_frame_53.jpg", "v": false}, {"f": "1001041658_frame_54.jpg", "v": false}, {"f": "1001041658_frame_55.jpg", "v": false}, {"f": "1001041658_frame_56.jpg", "v": false}, {"f": "1001041658_frame_57.jpg", "v": false}, {"f": "1001041658_frame_58.jpg", "v": false}, {"f": "1001041658_frame_59.jpg", "v": false}, {"f": "1001041658_frame_6.jpg", "v": false}, {"f": "1001041658_frame_60.jpg", "v": false}, {"f": "1001041658_frame_61.jpg", "v": false}, {"f": "1001041658_frame_62.jpg", "v": false}, {"f": "1001041658_frame_63.jpg", "v": false}, {"f": "1001041658_frame_64.jpg", "v": false}, {"f": "1001041658_frame_65.jpg", "v": false}, {"f": "1001041658_frame_66.jpg", "v": false}, {"f": "1001041658_frame_67.jpg", "v": false}, {"f": "1001041658_frame_68.jpg", "v": false}, {"f": "1001041658_frame_69.jpg", "v": false}, {"f": "1001041658_frame_7.jpg", "v": false}, {"f": "1001041658_frame_70.jpg", "v": false}, {"f": "1001041658_frame_71.jpg", "v": false}, {"f": "1001041658_frame_72.jpg", "v": false}, {"f": "1001041658_frame_73.jpg", "v": false}, {"f": "1001041658_frame_74.jpg", "v": false}, {"f": "1001041658_frame_75.jpg", "v": false}, {"f": "1001041658_frame_76.jpg", "v": false}, {"f": "1001041658_frame_77.jpg", "v": false}, {"f": "1001041658_frame_78.jpg", "v": false}, {"f": "1001041658_frame_79.jpg", "v": false}, {"f": "1001041658_frame_8.jpg", "v": false}, {"f": "1001041658_frame_80.jpg", "v": false}, {"f": "1001041658_frame_81.jpg", "v": false}, {"f": "1001041658_frame_82.jpg", "v": false}, {"f": "1001041658_frame_83.jpg", "v": false}, {"f": "1001041658_frame_84.jpg", "v": false}, {"f": "1001041658_frame_85.jpg", "v": false}, {"f": "1001041658_frame_86.jpg", "v": false}, {"f": "1001041658_frame_87.jpg", "v": false}, {"f": "1001041658_frame_88.jpg", "v": false}, {"f": "1001041658_frame_89.jpg", "v": false}, {"f": "1001041658_frame_9.jpg", "v": false}, {"f": "1001041658_frame_90.jpg", "v": false}, {"f": "1001041658_frame_92.jpg", "v": false}, {"f": "1001041658_frame_93.jpg", "v": false}, {"f": "1001041658_frame_94.jpg", "v": false}, {"f": "1001041658_frame_95.jpg", "v": false}, {"f": "1001041658_frame_96.jpg", "v": false}, {"f": "1001041658_frame_97.jpg", "v": false}, {"f": "1001041658_frame_98.jpg", "v": false}, {"f": "1001041658_frame_99.jpg", "v": false}, {"f": "1001041659_frame_1.jpg", "v": false}, {"f": "1001041659_frame_10.jpg", "v": false}, {"f": "1001041659_frame_100.jpg", "v": false}, {"f": "1001041659_frame_101.jpg", "v": false}, {"f": "1001041659_frame_102.jpg", "v": false}, {"f": "1001041659_frame_103.jpg", "v": false}, {"f": "1001041659_frame_104.jpg", "v": false}, {"f": "1001041659_frame_105.jpg", "v": false}, {"f": "1001041659_frame_106.jpg", "v": false}, {"f": "1001041659_frame_107.jpg", "v": false}, {"f": "1001041659_frame_108.jpg", "v": false}, {"f": "1001041659_frame_109.jpg", "v": false}, {"f": "1001041659_frame_110.jpg", "v": false}, {"f": "1001041659_frame_111.jpg", "v": false}, {"f": "1001041659_frame_112.jpg", "v": false}, {"f": "1001041659_frame_113.jpg", "v": false}, {"f": "1001041659_frame_114.jpg", "v": false}, {"f": "1001041659_frame_115.jpg", "v": false}, {"f": "1001041659_frame_116.jpg", "v": false}, {"f": "1001041659_frame_117.jpg", "v": false}, {"f": "1001041659_frame_118.jpg", "v": false}, {"f": "1001041659_frame_119.jpg", "v": false}, {"f": "1001041659_frame_12.jpg", "v": false}, {"f": "1001041659_frame_120.jpg", "v": false}, {"f": "1001041659_frame_13.jpg", "v": false}, {"f": "1001041659_frame_14.jpg", "v": false}, {"f": "1001041659_frame_15.jpg", "v": false}, {"f": "1001041659_frame_16.jpg", "v": false}, {"f": "1001041659_frame_17.jpg", "v": false}, {"f": "1001041659_frame_18.jpg", "v": false}, {"f": "1001041659_frame_19.jpg", "v": false}, {"f": "1001041659_frame_2.jpg", "v": false}, {"f": "1001041659_frame_20.jpg", "v": false}, {"f": "1001041659_frame_21.jpg", "v": false}, {"f": "1001041659_frame_22.jpg", "v": false}, {"f": "1001041659_frame_23.jpg", "v": false}, {"f": "1001041659_frame_24.jpg", "v": false}, {"f": "1001041659_frame_25.jpg", "v": false}, {"f": "1001041659_frame_26.jpg", "v": false}, {"f": "1001041659_frame_27.jpg", "v": false}, {"f": "1001041659_frame_28.jpg", "v": false}, {"f": "1001041659_frame_29.jpg", "v": false}, {"f": "1001041659_frame_3.jpg", "v": false}, {"f": "1001041659_frame_30.jpg", "v": false}, {"f": "1001041659_frame_31.jpg", "v": false}, {"f": "1001041659_frame_32.jpg", "v": false}, {"f": "1001041659_frame_33.jpg", "v": false}, {"f": "1001041659_frame_34.jpg", "v": false}, {"f": "1001041659_frame_35.jpg", "v": false}, {"f": "1001041659_frame_36.jpg", "v": false}, {"f": "1001041659_frame_37.jpg", "v": false}, {"f": "1001041659_frame_38.jpg", "v": false}, {"f": "1001041659_frame_39.jpg", "v": false}, {"f": "1001041659_frame_4.jpg", "v": false}, {"f": "1001041659_frame_40.jpg", "v": false}, {"f": "1001041659_frame_41.jpg", "v": false}, {"f": "1001041659_frame_42.jpg", "v": false}, {"f": "1001041659_frame_43.jpg", "v": false}, {"f": "1001041659_frame_44.jpg", "v": false}, {"f": "1001041659_frame_45.jpg", "v": false}, {"f": "1001041659_frame_46.jpg", "v": false}, {"f": "1001041659_frame_47.jpg", "v": false}, {"f": "1001041659_frame_48.jpg", "v": false}, {"f": "1001041659_frame_49.jpg", "v": false}, {"f": "1001041659_frame_5.jpg", "v": false}, {"f": "1001041659_frame_50.jpg", "v": false}, {"f": "1001041659_frame_51.jpg", "v": false}, {"f": "1001041659_frame_52.jpg", "v": false}, {"f": "1001041659_frame_53.jpg", "v": false}, {"f": "1001041659_frame_54.jpg", "v": false}, {"f": "1001041659_frame_55.jpg", "v": false}, {"f": "1001041659_frame_56.jpg", "v": false}, {"f": "1001041659_frame_57.jpg", "v": false}, {"f": "1001041659_frame_58.jpg", "v": false}, {"f": "1001041659_frame_59.jpg", "v": false}, {"f": "1001041659_frame_6.jpg", "v": false}, {"f": "1001041659_frame_60.jpg", "v": false}, {"f": "1001041659_frame_62.jpg", "v": false}, {"f": "1001041659_frame_63.jpg", "v": false}, {"f": "1001041659_frame_64.jpg", "v": false}, {"f": "1001041659_frame_65.jpg", "v": false}, {"f": "1001041659_frame_66.jpg", "v": false}, {"f": "1001041659_frame_67.jpg", "v": false}, {"f": "1001041659_frame_68.jpg", "v": false}, {"f": "1001041659_frame_69.jpg", "v": false}, {"f": "1001041659_frame_7.jpg", "v": false}, {"f": "1001041659_frame_70.jpg", "v": false}, {"f": "1001041659_frame_71.jpg", "v": false}, {"f": "1001041659_frame_72.jpg", "v": false}, {"f": "1001041659_frame_73.jpg", "v": false}, {"f": "1001041659_frame_74.jpg", "v": false}, {"f": "1001041659_frame_75.jpg", "v": false}, {"f": "1001041659_frame_76.jpg", "v": false}, {"f": "1001041659_frame_77.jpg", "v": false}, {"f": "1001041659_frame_78.jpg", "v": false}, {"f": "1001041659_frame_79.jpg", "v": false}, {"f": "1001041659_frame_8.jpg", "v": false}, {"f": "1001041659_frame_80.jpg", "v": false}, {"f": "1001041659_frame_81.jpg", "v": false}, {"f": "1001041659_frame_82.jpg", "v": false}, {"f": "1001041659_frame_83.jpg", "v": false}, {"f": "1001041659_frame_84.jpg", "v": false}, {"f": "1001041659_frame_85.jpg", "v": false}, {"f": "1001041659_frame_86.jpg", "v": false}, {"f": "1001041659_frame_87.jpg", "v": false}, {"f": "1001041659_frame_88.jpg", "v": false}, {"f": "1001041659_frame_89.jpg", "v": false}, {"f": "1001041659_frame_9.jpg", "v": false}, {"f": "1001041659_frame_90.jpg", "v": false}, {"f": "1001041659_frame_91.jpg", "v": false}, {"f": "1001041659_frame_92.jpg", "v": false}, {"f": "1001041659_frame_93.jpg", "v": false}, {"f": "1001041659_frame_94.jpg", "v": false}, {"f": "1001041659_frame_95.jpg", "v": false}, {"f": "1001041659_frame_96.jpg", "v": false}, {"f": "1001041659_frame_97.jpg", "v": false}, {"f": "1001041659_frame_98.jpg", "v": false}, {"f": "1001041659_frame_99.jpg", "v": false}, {"f": "264074c3a1ade3966d41755278b5fe64.jpg", "v": false}, {"f": "3049df488de32fcb9511b4724fcf4933.jpg", "v": false}, {"f": "342b751d2c5bd36297b0d38b96527684.jpg", "v": false}, {"f": "50f09d2142eb2a3f1d793c3bbd8dbfc6.jpg", "v": false}, {"f": "548759038cddb7fc21ea1b1efa858ec3.jpg", "v": false}, {"f": "6adc42f0504bd10797c6b781130cda91.jpg", "v": false}, {"f": "6f5b737038e2c442aa7cd7ba57e2bac0.jpg", "v": false}, {"f": "8214398098666698ceb03927d3aa0641.jpg", "v": false}, {"f": "82634e36979a7625642c7fa2e6c31451.jpg", "v": false}, {"f": "851e0a705ef3363bf70051be4b3c868d.jpg", "v": false}, {"f": "9f651ced443d66041b5f4c042fd66d92.jpg", "v": false}, {"f": "AQNCgBE8wsfL2NC-jL34oAs2LiQXHqMbJNUimYng-1Ck622h7q8D_J6Z-eDpAKYSH-h-QBWzZPuGjVwA83oDehMW9f8sA2gRugY1-RqkPR-K1w.mp4", "v": true}, {"f": "Compress_20260829_182220_0473.jpg", "v": false}, {"f": "Compress_20260829_182220_0919.jpg", "v": false}, {"f": "Compress_20260829_182221_1272.jpg", "v": false}];
+
+  /* ====================================================== */
+
+  const grid = document.getElementById('grid');
+  const paginationEl = document.getElementById('pagination');
+  const statusBar = document.getElementById('statusBar');
+  const lightbox = document.getElementById('lightbox');
+  const lbContent = document.getElementById('lbContent');
+  const lbClose = document.getElementById('lbClose');
+  const lbPrev = document.getElementById('lbPrev');
+  const lbNext = document.getElementById('lbNext');
+
+  const totalPages = Math.max(1, Math.ceil(ITEMS.length / PAGE_SIZE));
+  let currentPage = 1;
+  let currentPageItems = [];
+  let currentIndexInPage = -1;
+  let observer = null;
+
+  function urlFor(filename){
+    return BASE_URL + encodeURIComponent(filename).replace(/%2F/g, '/');
+  }
+
+  function unloadObserver(){
+    if(observer){
+      observer.disconnect();
+      observer = null;
+    }
+  }
+
+  function renderPage(page){
+    unloadObserver();
+    currentPage = Math.min(Math.max(1, page), totalPages);
+
+    // Fully clear previous page's DOM/media to free memory on low-RAM devices
+    grid.innerHTML = '';
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const end = Math.min(start + PAGE_SIZE, ITEMS.length);
+    currentPageItems = ITEMS.slice(start, end);
+
+    if(currentPageItems.length === 0){
+      grid.innerHTML = '<div class="empty-note">No profiles on this page.</div>';
+    }
+
+    const frag = document.createDocumentFragment();
+
+    currentPageItems.forEach((item, idx) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.setAttribute('role','listitem');
+      card.tabIndex = 0;
+      card.dataset.idx = idx;
+
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+
+      const placeholder = document.createElement('div');
+      placeholder.className = 'placeholder';
+      thumb.appendChild(placeholder);
+
+      if(item.v){
+        const badge = document.createElement('div');
+        badge.className = 'video-badge';
+        badge.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+        thumb.appendChild(badge);
+      }
+
+      thumb.dataset.src = urlFor(item.f);
+      thumb.dataset.isVideo = item.v ? '1' : '0';
+
+      const openHandler = () => openLightbox(idx);
+      card.addEventListener('click', openHandler);
+      card.addEventListener('keypress', (e) => {
+        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openHandler(); }
+      });
+
+      card.appendChild(thumb);
+
+      const name = NAME_MAP[item.f];
+      if(name){
+        const label = document.createElement('div');
+        label.style.marginTop = '10px';
+        label.style.fontSize = '13px';
+        label.style.color = 'var(--text-dim)';
+        label.style.letterSpacing = '.03em';
+        label.textContent = name;
+        card.appendChild(label);
+      }
+
+      frag.appendChild(card);
+    });
+
+    grid.appendChild(frag);
+
+    // Lazy-load: only fetch media once its card scrolls near the viewport
+    observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if(entry.isIntersecting){
+          loadThumb(entry.target);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { root: null, rootMargin: '400px 0px', threshold: 0.01 });
+
+    grid.querySelectorAll('.thumb').forEach(el => observer.observe(el));
+
+    renderPagination();
+    updateStatus();
+    window.scrollTo({top: 0, behavior: 'instant' in window ? 'instant' : 'auto'});
+  }
+
+  function loadThumb(thumbEl){
+    const src = thumbEl.dataset.src;
+    const isVideo = thumbEl.dataset.isVideo === '1';
+    let el;
+    if(isVideo){
+      el = document.createElement('video');
+      el.muted = true;
+      el.playsInline = true;
+      el.preload = 'metadata';
+      el.src = src + '#t=0.1';
+    } else {
+      el = document.createElement('img');
+      el.loading = 'lazy';
+      el.decoding = 'async';
+      el.alt = '';
+      el.src = src;
+    }
+    el.addEventListener(isVideo ? 'loadeddata' : 'load', () => {
+      el.classList.add('loaded');
+      const ph = thumbEl.querySelector('.placeholder');
+      if(ph) ph.remove();
+    });
+    el.addEventListener('error', () => {
+      const ph = thumbEl.querySelector('.placeholder');
+      if(ph){ ph.style.setProperty('--err','1'); ph.textContent = '—'; ph.style.animation='none'; ph.style.setProperty('font-size','20px'); ph.style.setProperty('color','var(--text-dim)'); }
+    });
+    thumbEl.appendChild(el);
+  }
+
+  function renderPagination(){
+    paginationEl.innerHTML = '';
+
+    const makeBtn = (label, page, opts={}) => {
+      const b = document.createElement('button');
+      b.textContent = label;
+      if(opts.active) b.classList.add('active');
+      if(opts.disabled) b.disabled = true;
+      b.addEventListener('click', () => { if(!opts.disabled) renderPage(page); });
+      return b;
+    };
+
+    paginationEl.appendChild(makeBtn('‹', currentPage - 1, {disabled: currentPage === 1}));
+
+    for(let p = 1; p <= totalPages; p++){
+      paginationEl.appendChild(makeBtn(String(p), p, {active: p === currentPage}));
+    }
+
+    paginationEl.appendChild(makeBtn('›', currentPage + 1, {disabled: currentPage === totalPages}));
+  }
+
+  function updateStatus(){
+    const start = (currentPage - 1) * PAGE_SIZE + 1;
+    const end = Math.min(currentPage * PAGE_SIZE, ITEMS.length);
+    statusBar.textContent = `${start}–${end} of ${ITEMS.length} profiles · page ${currentPage} of ${totalPages}`;
+  }
+
+  /* ---------------- Lightbox ---------------- */
+
+  function openLightbox(indexInPage){
+    currentIndexInPage = indexInPage;
+    renderLightboxContent();
+    lightbox.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox(){
+    lightbox.classList.remove('open');
+    lbContent.innerHTML = '';
+    document.body.style.overflow = '';
+  }
+
+  function renderLightboxContent(){
+    lbContent.innerHTML = '';
+    const item = currentPageItems[currentIndexInPage];
+    if(!item) return;
+    const src = urlFor(item.f);
+    let el;
+    if(item.v){
+      el = document.createElement('video');
+      el.src = src;
+      el.controls = true;
+      el.autoplay = true;
+      el.playsInline = true;
+    } else {
+      el = document.createElement('img');
+      el.src = src;
+      el.alt = '';
+    }
+    lbContent.appendChild(el);
+  }
+
+  function showNext(){
+    if(currentPageItems.length === 0) return;
+    currentIndexInPage = (currentIndexInPage + 1) % currentPageItems.length;
+    renderLightboxContent();
+  }
+  function showPrev(){
+    if(currentPageItems.length === 0) return;
+    currentIndexInPage = (currentIndexInPage - 1 + currentPageItems.length) % currentPageItems.length;
+    renderLightboxContent();
+  }
+
+  lbClose.addEventListener('click', closeLightbox);
+  lbNext.addEventListener('click', showNext);
+  lbPrev.addEventListener('click', showPrev);
+  lightbox.addEventListener('click', (e) => { if(e.target === lightbox) closeLightbox(); });
+
+  document.addEventListener('keydown', (e) => {
+    if(!lightbox.classList.contains('open')) return;
+    if(e.key === 'Escape') closeLightbox();
+    if(e.key === 'ArrowRight') showNext();
+    if(e.key === 'ArrowLeft') showPrev();
+  });
+
+  // Touch swipe navigation
+  let touchStartX = null;
+  lightbox.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].clientX; }, {passive:true});
+  lightbox.addEventListener('touchend', (e) => {
+    if(touchStartX === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if(Math.abs(dx) > 50){ dx < 0 ? showNext() : showPrev(); }
+    touchStartX = null;
+  }, {passive:true});
+
+  /* ---------------- Init ---------------- */
+  renderPage(1);
+
+})();
+</script>
+</body>
+</html>
